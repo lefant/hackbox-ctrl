@@ -10,7 +10,7 @@ This spec is the high-level source of truth for readiness expectations, but it d
 
 The current validation tooling and procedure split is documented in:
 
-- `tooling/hackbox-ctrl-utils/docs/reference/readiness-validation.md`
+- `docs/reference/readiness-validation.md`
 
 The intended validation split is:
 
@@ -28,7 +28,7 @@ depending on which mechanism is more reliable for the behavior being validated.
 
 The readiness requirements are grouped by the shared bucket model documented in:
 
-- `tooling/hackbox-ctrl-utils/docs/decisions/2026-03-26_adopt-shared-nix-bucket-layering.md`
+- `docs/decisions/2026-03-26_adopt-shared-nix-bucket-layering.md`
 
 ## Deployment Applicability
 

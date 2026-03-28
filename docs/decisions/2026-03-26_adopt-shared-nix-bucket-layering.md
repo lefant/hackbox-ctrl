@@ -133,7 +133,7 @@ Default policy:
 - Hosts should be considered agent-capable by default.
 - `direnv` support may remain available, but automatic `direnv` activation should not be part of the default shell baseline.
 - `~/.zsh/zshlocal.sh` should be empty/minimal by default and not carry routine baseline behavior.
-- `~/.env.toolbox` should be treated as a credentials-only escape hatch until a better injection path exists.
+- `~/.env.toolnix` should be treated as the primary credentials-only escape hatch, with `~/.env.toolbox` supported only as a compatibility fallback during migration.
 
 ## Consequences
 
@@ -177,5 +177,4 @@ Historical prototype locations:
 
 ## Related
 
-- [2026-03-26-updated-scope-classification-and-shared-nix-layering.md](/home/exedev/git/lefant/hackbox-ctrl-inventory/tooling/hackbox-ctrl-utils/docs/research/2026-03-26-updated-scope-classification-and-shared-nix-layering.md)
-- [nix-home-manager-devenv-bucket-layering.md](/home/exedev/git/lefant/hackbox-ctrl-inventory/tooling/hackbox-ctrl-utils/docs/diagrams/nix-home-manager-devenv-bucket-layering.md)
+- `toolnix` repo module layout under `modules/shared/`, `modules/devenv/`, and `modules/home-manager/`

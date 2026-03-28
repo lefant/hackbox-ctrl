@@ -72,7 +72,7 @@ The system SHOULD support a transition period where current bootstrap scripts ca
 
 **Scenarios:**
 - GIVEN a project that still relies on `scripts/bootstrap.sh` outputs WHEN provisioning runs THEN the manifest can still drive that flow while the copied-file surface is being reduced
-- GIVEN a project that has moved to a lighter runtime layout WHEN provisioning runs THEN the manifest does not require the old copied `toolbox/*` compatibility structure
+- GIVEN a project that has moved to a lighter runtime layout WHEN provisioning runs THEN the manifest does not require old copied shared-repo compatibility structure
 
 ## Open Questions
 

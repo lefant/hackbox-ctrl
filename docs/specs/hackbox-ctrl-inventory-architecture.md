@@ -4,7 +4,6 @@
 
 This feature defines a private `hackbox-ctrl-inventory` repository that serves as the composition root for provisioned coding environments. It matters because project code, shared tooling, instance-specific inventory, and personal credentials need different lifecycles, visibility, and reuse boundaries.
 
-See: [2026-03-16-adopt-composable-project-environments.md](../decisions/2026-03-16-adopt-composable-project-environments.md)
 See: [project-environment-manifest.md](project-environment-manifest.md)
 
 ## Requirements
@@ -19,12 +18,12 @@ The system SHALL use a dedicated `hackbox-ctrl-inventory` repository as the sour
 
 ### Shared Tooling Separation
 
-The system SHALL keep general tooling in separate reusable repositories rather than vendoring them into `hackbox-ctrl-inventory` by default, except where a dedicated shared-tools repository is intentionally vendored as a subtree.
+The system SHALL keep general tooling in separate reusable repositories rather than vendoring them into `hackbox-ctrl-inventory` by default.
 
 **Scenarios:**
 - GIVEN shared tooling such as `lefant/toolnix`, `lefant/agent-skills`, and `lefant/claude-code-plugins` WHEN the inventory is resolved THEN those repositories are referenced by URL and ref rather than copied into `hackbox-ctrl-inventory`
-- GIVEN tooling that is private but reusable, such as `lefant/dotfiles-git` WHEN the inventory is resolved THEN it remains a separate repository with its own lifecycle and access controls
-- GIVEN shared control-plane helpers WHEN they need to travel with each inventory checkout THEN they MAY be included via a dedicated `hackbox-ctrl-utils` subtree
+- GIVEN tooling that is private but reusable WHEN the inventory is resolved THEN it remains a separate repository with its own lifecycle and access controls
+- GIVEN shared control-plane helpers WHEN an operator needs them locally THEN they are provided by the tracked `hackbox-ctrl` repository rather than vendored into the inventory
 
 ### Private Inventory Scope
 
@@ -52,10 +51,10 @@ The system SHALL keep credentials inside `hackbox-ctrl-inventory/credentials/` a
 
 ### Shared Bootstrap Tooling
 
-The system SHALL allow shared provisioning and repository-fetching scripts to live in a dedicated reusable `hackbox-ctrl-utils` repository rather than inside `hackbox-ctrl-inventory` itself.
+The system SHALL allow shared provisioning and repository-fetching scripts to live in `hackbox-ctrl` rather than inside `hackbox-ctrl-inventory` itself.
 
 **Scenarios:**
-- GIVEN a script that fetches referenced tooling and project repositories into a local checkout WHEN provisioning logic is needed across multiple inventories THEN that script lives in `hackbox-ctrl-utils`
+- GIVEN a script that fetches referenced tooling and project repositories into a local checkout WHEN provisioning logic is needed across multiple inventories THEN that script lives in `hackbox-ctrl/scripts/`
 - GIVEN changes to provisioning mechanics WHEN `hackbox-ctrl-inventory` is updated THEN the manifests can continue to reference the shared scripts without duplicating their implementation
 
 ### Minimal Inventory Structure
@@ -65,7 +64,7 @@ The system SHOULD keep `hackbox-ctrl-inventory` minimal and focused on manifests
 **Scenarios:**
 - GIVEN the older `bootstrap-configs/` compatibility layout WHEN bootstrap logic still needs it THEN it is generated from `targets/` plus `credentials/` rather than committed as a second source of truth
 - GIVEN future growth in environment definitions WHEN `hackbox-ctrl-inventory` evolves THEN its structure stays centered on describing environments rather than re-implementing shared `toolnix` internals
-- GIVEN shared architecture, bootstrap, or repository-structure documentation WHEN it is written THEN it lives in shared docs such as `hackbox-ctrl-utils/docs/` or `sources/toolnix/docs/`, not as a general documentation tree inside the private inventory repo
+- GIVEN shared architecture, bootstrap, or repository-structure documentation WHEN it is written THEN it lives in `hackbox-ctrl/docs/` or `sources/toolnix/docs/`, not as a general documentation tree inside the private inventory repo
 
 ### Thin Project Integration
 

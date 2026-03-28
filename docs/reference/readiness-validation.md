@@ -18,11 +18,9 @@ The first question is now:
 ## Source Of Truth
 
 - bucket model:
-  - `tooling/hackbox-ctrl-utils/docs/decisions/2026-03-26_adopt-shared-nix-bucket-layering.md`
+  - `docs/decisions/2026-03-26_adopt-shared-nix-bucket-layering.md`
 - readiness expectations:
-  - `tooling/hackbox-ctrl-utils/docs/specs/control-host-and-target-agent-readiness.md`
-- layering rationale:
-  - `tooling/hackbox-ctrl-utils/docs/research/2026-03-26-updated-scope-classification-and-shared-nix-layering.md`
+  - `docs/specs/control-host-and-target-agent-readiness.md`
 
 ## Deployment Types
 
@@ -75,12 +73,12 @@ graph LR
 
 ## Current Tooling
 
-- `tooling/hackbox-ctrl-utils/scripts/lib/smoke-tests.sh`
+- `scripts/lib/smoke-tests.sh`
   - shared smoke-test library used by the provisioners
   - best for deterministic `R` and `A` checks, and a small subset of `H`
-- `tooling/hackbox-ctrl-utils/scripts/verify-general-machine-readiness.sh <target-name>`
+- `scripts/verify-general-machine-readiness.sh <target-name>`
   - prints the canonical interactive acceptance procedure for a general machine target
-- `tooling/hackbox-ctrl-utils/scripts/verify-control-host-readiness.sh [target-name]`
+- `scripts/verify-control-host-readiness.sh [target-name]`
   - prints the canonical interactive acceptance procedure for the active control host
 
 ## Bucket Grouping
