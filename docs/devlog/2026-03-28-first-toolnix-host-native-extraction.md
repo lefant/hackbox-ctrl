@@ -42,6 +42,7 @@ Validated directly from `~/git/lefant/hackbox-ctrl` against:
 
 - `lefant-toolbox-nix.exe.xyz`
 - `lefant-toolbox-nix2.exe.xyz`
+- `lefant-toolnix.exe.xyz`
 
 Smoke suite result on both hosts:
 
@@ -57,10 +58,29 @@ Smoke suite result on both hosts:
 
 All passed.
 
+## Smoke Runner Follow-Up
+
+The first `lefant-toolnix` smoke attempt exposed a bug in the extracted
+smoke-runner wrapper rather than in the host itself.
+
+Cause:
+
+- remote commands were executed through the remote default shell instead of the
+  managed `zsh -il` path
+
+Fix:
+
+- wrap remote smoke-test commands with `zsh -ilc ...`
+
+After that change:
+
+- `lefant-toolnix` smoke tests passed
+- `lefant-toolbox-nix` still passed as a regression check
+
 ## Follow-Up
 
 - continue replacing copied subtree-era docs with `hackbox-ctrl`-native wording
 - migrate the next script slice, especially control-host bootstrap and any
   remaining inventory path assumptions
-- expand validation from the two Nix toolbox hosts to `lefant-toolnix` and then
-  a small toolnix-managed production subset
+- expand validation from the current three proven hosts to `lefant-ctrl` and
+  then a small toolnix-managed production subset

@@ -11,6 +11,7 @@ _remote_cmd() {
   local ssh_opts_str="$4"
   shift 4
   local cmd="$*"
+  local remote_cmd
 
   local -a ssh_opts
   read -ra ssh_opts <<< "$ssh_opts_str"
@@ -20,8 +21,9 @@ _remote_cmd() {
     return 1
   fi
 
+  remote_cmd="cd '$repo_dir' && direnv exec . $cmd"
   ssh "${ssh_opts[@]}" "$fqdn" \
-    "cd '$repo_dir' && direnv exec . $cmd"
+    "zsh -ilc $(printf '%q' "$remote_cmd")"
 }
 
 _smoke_result() {
@@ -119,8 +121,10 @@ smoke_test_environment_entry() {
 
   local -a ssh_opts
   read -ra ssh_opts <<< "$ssh_opts_str"
+  local remote_cmd
+  remote_cmd="cd '$repo_dir' && devenv shell -- printenv DEVENV_ROOT"
   result="$(ssh "${ssh_opts[@]}" "$fqdn" \
-    "cd '$repo_dir' && devenv shell -- printenv DEVENV_ROOT" 2>/dev/null)" || true
+    "zsh -ilc $(printf '%q' "$remote_cmd")" 2>/dev/null)" || true
   result="$(printf '%s' "$result" | tail -n 1)"
   if [ -n "$result" ]; then
     _smoke_result "environment entry" 1 "DEVENV_ROOT=$result"
