@@ -4,7 +4,7 @@
 
 This feature defines a single manifest that describes which project repo, `toolnix`, shared agent/plugin repos, credentials, and related components make up a provisioned coding environment. It matters because the same environment definition should drive legacy Docker-first exe.dev provisioning now and a host-native backend later without changing the logical contract.
 
-See: [2026-03-16-adopt-composable-project-environments.md](../decisions/2026-03-16-adopt-composable-project-environments.md)
+See: [2026-03-16_adopt-composable-project-environments.md](../decisions/2026-03-16_adopt-composable-project-environments.md)
 
 ## Requirements
 
