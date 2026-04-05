@@ -43,8 +43,8 @@ shared Nix work. It remains:
 
 ### Documentation
 
-- durable docs in `hackbox-ctrl-utils` and `hackbox-ctrl-inventory` should point
-  to `toolnix` first
+- durable docs in `hackbox-ctrl` and `hackbox-ctrl-inventory` should point to
+  `toolnix` first
 - `sources/toolbox/docs/` should be treated as historical or migration context
   unless a document is explicitly still about legacy toolbox behavior
 
@@ -71,5 +71,5 @@ This decision does not require:
 
 ## Related
 
-- [2026-03-27-toolnix-extraction-and-first-consumer-design.md](/home/exedev/git/lefant/hackbox-ctrl-inventory/tooling/hackbox-ctrl-utils/docs/plans/2026-03-27-toolnix-extraction-and-first-consumer-design.md)
-- [2026-03-26_adopt-shared-nix-bucket-layering.md](/home/exedev/git/lefant/hackbox-ctrl-inventory/tooling/hackbox-ctrl-utils/docs/decisions/2026-03-26_adopt-shared-nix-bucket-layering.md)
+- [2026-03-30-hackbox-ctrl-convergence.md](../plans/2026-03-30-hackbox-ctrl-convergence.md)
+- [2026-03-26_adopt-shared-nix-bucket-layering.md](./2026-03-26_adopt-shared-nix-bucket-layering.md)

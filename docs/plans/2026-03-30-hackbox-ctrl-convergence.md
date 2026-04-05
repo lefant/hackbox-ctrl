@@ -61,8 +61,8 @@ This plan does not:
 
 ### 2. Standalone repo posture
 
-- make the standalone repo readable on its own without requiring the old
-  `hackbox-ctrl-utils` subtree for basic architectural context
+- make the standalone repo readable on its own without requiring older subtree
+  history for basic architectural context
 - keep compatibility details in code where needed, but lead docs with the
   `toolnix`-first model
 

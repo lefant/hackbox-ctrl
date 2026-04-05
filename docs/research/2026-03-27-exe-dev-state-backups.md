@@ -927,6 +927,6 @@ The strongest current v1 recommendation is:
 - restic docs, backup/env vars: `https://restic.readthedocs.io/en/stable/040_backup.html`
 - Google Cloud Storage authentication docs: `https://cloud.google.com/storage/docs/authentication`
 - Pulumi GCP docs/context for storage buckets, service accounts, keys, and IAM bindings
-- `tooling/hackbox-ctrl-utils/scripts/provision-exe-dev-nix.sh`
-- `tooling/hackbox-ctrl-utils/docs/research/2026-03-25-home-manager-shared-conventions-and-devenv-boundaries.md`
-- `tooling/hackbox-ctrl-utils/docs/research/2026-03-26-updated-scope-classification-and-shared-nix-layering.md`
+- `scripts/provision-exe-dev-nix.sh`
+- `docs/decisions/2026-03-26_adopt-shared-nix-bucket-layering.md`
+- `docs/decisions/2026-03-28_adopt-toolnix-as-primary-shared-nix-repo.md`
