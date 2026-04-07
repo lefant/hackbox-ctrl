@@ -78,6 +78,9 @@ Inside the target tmux session, verify:
    locale | grep '^LANG='
    echo "\$TZ"
    date
+   whence -w compinit
+   zstyle -L ':completion:*' | grep 'special-dirs true'
+   In zsh, verify that typing '..' then TAB completes as a directory path and appends '/'.
 
 3. Explicit environment entry
    devenv shell -- printenv DEVENV_ROOT

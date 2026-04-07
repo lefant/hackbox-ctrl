@@ -181,6 +181,19 @@ smoke_test_skills() {
   fi
 }
 
+smoke_test_zsh_completion() {
+  local fqdn="$1" mode="$2" repo_dir="$3" ssh_opts_str="$4"
+  local result
+  result="$(_remote_cmd "$fqdn" "$mode" "$repo_dir" "$ssh_opts_str" \
+    'whence -w compinit >/dev/null && typeset -p _comps >/dev/null 2>&1 && test -r "$HOME/.zsh/completion" && grep -q "special-dirs true" "$HOME/.zsh/completion" && echo ok' 2>/dev/null)" || true
+  result="$(printf '%s' "$result" | tail -n 1)"
+  if [ "$result" = "ok" ]; then
+    _smoke_result "zsh completion" 1 "compinit + special-dirs active"
+  else
+    _smoke_result "zsh completion" 0 "expected compinit and completion defaults"
+  fi
+}
+
 run_smoke_tests() {
   local fqdn="$1"
   local mode="$2"
@@ -193,6 +206,7 @@ run_smoke_tests() {
   smoke_test_timezone "$fqdn" "$mode" "$repo_dir" "$ssh_opts_str"
   smoke_test_environment_entry "$fqdn" "$mode" "$repo_dir" "$ssh_opts_str"
   smoke_test_skills "$fqdn" "$mode" "$repo_dir" "$ssh_opts_str"
+  smoke_test_zsh_completion "$fqdn" "$mode" "$repo_dir" "$ssh_opts_str"
   smoke_test_claude "$fqdn" "$mode" "$repo_dir" "$ssh_opts_str"
   smoke_test_codex "$fqdn" "$mode" "$repo_dir" "$ssh_opts_str"
   smoke_test_pi "$fqdn" "$mode" "$repo_dir" "$ssh_opts_str"
