@@ -49,10 +49,16 @@ This repo intentionally does not track those private inputs.
 
 ## Common commands
 
-Provision or reprovision a target VM from the standalone repo:
+Provision or reprovision a project target VM from the standalone repo:
 
 ```bash
 scripts/provision-exe-dev-nix.sh <target-fqdn>
+```
+
+Provision a host-only toolnix target with no target-side `toolnix` git clone:
+
+```bash
+scripts/provision-toolnix-host.sh <target-fqdn>
 ```
 
 SSH to a configured target using inventory target metadata:
@@ -75,7 +81,9 @@ scripts/verify-control-host-readiness.sh [target-name]
 
 ## Current model
 
-The active host-native path is:
+### Project-target path
+
+The active project-target host-native path is:
 
 1. read target metadata from `hackbox-ctrl-inventory`
 2. place credentials and bootstrap inputs on the target
@@ -83,6 +91,17 @@ The active host-native path is:
 4. generate a tiny per-host Home Manager bootstrap flake
 5. activate persistent host state via `toolnix.homeManagerModules.default`
 6. run smoke tests and then interactive acceptance checks
+
+### Host-only toolnix path
+
+The host-only bootstrap path is:
+
+1. read target metadata from `hackbox-ctrl-inventory`
+2. place credentials and bootstrap inputs on the target
+3. invoke the tracked `toolnix` bootstrap script on the target
+4. consume `toolnix` through its remote flake interface
+5. activate persistent host state via `toolnix.homeManagerModules.default`
+6. run host-bootstrap readiness checks without requiring a project checkout
 
 ## Start here
 
