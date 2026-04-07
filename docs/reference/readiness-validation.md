@@ -26,6 +26,7 @@ The first question is now:
 
 | Deployment type | Buckets expected |
 | --- | --- |
+| Host-only toolnix bootstrap | `R + O + A` by default |
 | General machine minimal | `R + A` |
 | General machine with opinionated shell | `R + O + A` |
 | Control host | `R + O + A + H` |
@@ -74,8 +75,15 @@ graph LR
 ## Current Tooling
 
 - `scripts/lib/smoke-tests.sh`
-  - shared smoke-test library used by the provisioners
+  - shared smoke-test library used by the project-target provisioners
   - best for deterministic `R` and `A` checks, and a small subset of `H`
+  - now includes a zsh-completion smoke check that runs in an interactive login zsh context so managed completion defaults are validated the same way they are actually consumed
+- `scripts/provision-exe-dev-nix.sh <target-fqdn>`
+  - project-target provisioner for fresh exe.dev VMs
+  - now uses a fail-fast remote setup timeout, remote status dumps on failure, the tracked `toolnix` remote bootstrap script for cache-backed Home Manager activation, and a follow-on cache-backed `devenv` install
+- `scripts/verify-toolnix-host-bootstrap.sh <target-fqdn>`
+  - deterministic readiness checks for the host-only toolnix bootstrap path
+  - does not require a project checkout on the target
 - `scripts/verify-general-machine-readiness.sh <target-name>`
   - prints the canonical interactive acceptance procedure for a general machine target
 - `scripts/verify-control-host-readiness.sh [target-name]`
@@ -229,6 +237,37 @@ Typical examples:
 - custom-skill usability inside an actual agent session
 - target-entry alias behavior on the control host
 - exe.dev fleet workflows driven by a real agent session
+
+## Recently Reproved Fresh-VM Path
+
+A fresh exe.dev project-target proof now exists for the delegated remote-flake path:
+
+- `scripts/provision-exe-dev-nix.sh toolnix-project-proof.exe.xyz`
+
+The current proved sequence is:
+
+1. create or reach the target VM
+2. upload machine-local credentials from control-host inventory
+3. run the tracked `toolnix` remote bootstrap script
+4. fail early unless `cache.numtide.com` is actually active in `nix config show`
+5. activate Home Manager-managed host state from remote flake consumption
+6. install `devenv` only after that cache-backed baseline is active
+7. run project-target smoke tests
+
+The latest fresh proof passed:
+
+- `gh auth`
+- `tools`
+- `timezone`
+- `environment entry`
+- `skills`
+- `zsh completion`
+- `claude`
+- `codex`
+- `pi`
+- `pi keybindings`
+
+The Codex portion required refreshed machine-local auth on the control host and resync of the shared uploaded auth file; it was not a cache or bootstrap defect.
 
 ## Usage During Provisioning
 

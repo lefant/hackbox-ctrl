@@ -36,10 +36,35 @@ Readiness expectations apply according to the enabled bucket set for the deploym
 
 | Deployment type | Expected buckets | Notes |
 | --- | --- | --- |
+| Host-only toolnix bootstrap | `R + O + A` by default | Home Manager-managed host state without requiring a project checkout |
 | General machine minimal | `R + A` | Neutral project-capable VM/runtime baseline |
 | General machine with opinionated shell | `R + O + A` | Default host-style ergonomics added on top of baseline |
 | Control host | `R + O + A + H` | Full control-plane workstation |
 | Opted-in admin target | `R + A + H` or `R + O + A + H` | Target VM explicitly granted management behavior |
+
+### Host-only Toolnix Bootstrap Readiness
+
+The system SHALL support a host-only bootstrap path that produces the expected managed host state without requiring a checked out project repository on the target machine.
+
+**Validation preference:** primarily deterministic smoke checks, with optional interactive acceptance afterward.
+
+**Scenarios:**
+- GIVEN a fresh exe.dev VM is provisioned through the host-only toolnix bootstrap path WHEN readiness is checked THEN `claude` and `pi` are on `PATH`.
+- GIVEN that same host-only bootstrap path WHEN readiness is checked THEN managed files such as `~/.claude/settings.json`, `~/.claude/skills`, and `~/.pi/agent/settings.json` exist.
+- GIVEN the host-only bootstrap path is used from a control host WHEN target state is inspected THEN the target does not require a target-side clone of `toolnix` for the bootstrap to succeed.
+
+### Delegated Project-Target Bootstrap Readiness
+
+The system SHALL support a delegated project-target bootstrap path that provisions a fresh exe.dev VM, consumes `toolnix` through a remote flake bootstrap, installs the declared project checkout, and reaches a working `devenv`-capable state without requiring target-side clones of shared bootstrap repos.
+
+**Validation preference:** deterministic fresh-VM proof plus smoke tests, followed by optional interactive acceptance.
+
+**Scenarios:**
+- GIVEN a fresh exe.dev VM is provisioned through `scripts/provision-exe-dev-nix.sh` WHEN the delegated remote bootstrap runs THEN the target reaches Home Manager-managed host state through the tracked `toolnix` remote bootstrap script rather than an inline ad hoc bootstrap implementation.
+- GIVEN the delegated project-target bootstrap path is used on a fresh VM WHEN cache configuration is applied THEN the path fails early unless `cache.numtide.com` is actually active in `nix config show` for the target runtime.
+- GIVEN the delegated project-target bootstrap path has activated the cache-backed host baseline WHEN `devenv` is installed and initialized THEN `devenv shell -- printenv DEVENV_ROOT` succeeds for the declared project checkout without the earlier large local build failure mode.
+- GIVEN the delegated project-target bootstrap path is reproved on a fresh VM WHEN smoke tests run THEN deterministic checks for shell baseline, agent baseline, zsh completion, and `devenv` environment entry succeed.
+- GIVEN the delegated project-target bootstrap path uploads machine-local auth artifacts from control-host inventory WHEN a target agent uses Codex, Claude, or Pi THEN success depends on the freshness of the uploaded machine-local auth state rather than on target-side repo clones.
 
 ### R: Required Shell/System Baseline Readiness
 

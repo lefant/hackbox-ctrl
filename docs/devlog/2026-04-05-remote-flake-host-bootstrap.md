@@ -30,5 +30,6 @@ Validated:
 - follow-up work on the delegated project-target path (`scripts/provision-exe-dev-nix.sh`) added fail-fast remote monitoring, an explicit remote setup timeout, and remote status dumps on failure so fresh-VM proofs do not disappear into long blind runs
 - the key cache fix for that delegated path was making the tracked `toolnix` bootstrap script ensure `/etc/nix/nix.conf` includes `/etc/nix/nix.custom.conf`; without that include, fresh VMs still built large Rust trees locally despite the machine-local cache fragment being present on disk
 - after that fix, the project-target path was reproved on a fresh exe.dev VM with `devenv` installed after the cache-backed Home Manager bootstrap, and `devenv shell -- printenv DEVENV_ROOT` succeeded without the earlier heavy local compilation failure
-- the remaining fresh-VM proof issue is machine-local Codex auth refresh, not bootstrap or cache readiness
-- the local repo currently has no configured push remote from this environment, so commits were recorded locally during implementation
+- the fresh proof now also passes the full project-target smoke suite, including zsh completion and authenticated Codex execution, after refreshing the machine-local Codex auth on the control host and resyncing the uploaded shared auth file
+- `scripts/lib/smoke-tests.sh` needed a small correction as well: the zsh-completion proof must run in an interactive login zsh context, otherwise the test can falsely fail even when the managed zsh completion rollout is present on disk and active in real sessions
+- the local repo now has a valid `origin` remote configured; pushability depends on repository access rather than lack of remote wiring
