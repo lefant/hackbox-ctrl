@@ -98,10 +98,11 @@ The host-only bootstrap path is:
 
 1. read target metadata from `hackbox-ctrl-inventory`
 2. place credentials and bootstrap inputs on the target
-3. invoke the tracked `toolnix` bootstrap script on the target
-4. consume `toolnix` through its remote flake interface
-5. activate persistent host state via `toolnix.homeManagerModules.default`
-6. run host-bootstrap readiness checks without requiring a project checkout
+3. inject machine-local files such as `~/.env.toolnix` and shared agent auth state from the control host
+4. invoke the tracked `toolnix` bootstrap script on the target
+5. consume `toolnix` through its remote flake interface
+6. activate persistent host state via `toolnix.homeManagerModules.default`
+7. run host-bootstrap readiness checks without requiring a project checkout
 
 ## Start here
 
