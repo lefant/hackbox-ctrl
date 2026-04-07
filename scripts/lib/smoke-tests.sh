@@ -185,7 +185,7 @@ smoke_test_zsh_completion() {
   local fqdn="$1" mode="$2" repo_dir="$3" ssh_opts_str="$4"
   local result
   result="$(_remote_cmd "$fqdn" "$mode" "$repo_dir" "$ssh_opts_str" \
-    'whence -w compinit >/dev/null && typeset -p _comps >/dev/null 2>&1 && test -r "$HOME/.zsh/completion" && grep -q "special-dirs true" "$HOME/.zsh/completion" && echo ok' 2>/dev/null)" || true
+    'zsh -ilc '\''whence -w compinit >/dev/null && typeset -p _comps >/dev/null 2>&1 && test -r "$HOME/.zsh/completion" && grep -q "special-dirs true" "$HOME/.zsh/completion" && echo ok'\''' 2>/dev/null)" || true
   result="$(printf '%s' "$result" | tail -n 1)"
   if [ "$result" = "ok" ]; then
     _smoke_result "zsh completion" 1 "compinit + special-dirs active"
