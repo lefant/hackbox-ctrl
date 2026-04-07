@@ -17,7 +17,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INVENTORY_ROOT="${HACKBOX_CTRL_INVENTORY_ROOT:-$REPO_ROOT/hackbox-ctrl-inventory}"
+TOOLNIX_REPO_ROOT="${TOOLNIX_REPO_ROOT:-/home/exedev/git/lefant/toolnix}"
+TOOLNIX_BOOTSTRAP_SCRIPT="$TOOLNIX_REPO_ROOT/scripts/bootstrap-home-manager-host.sh"
 export BOOTSTRAP_SSH_KEY="${BOOTSTRAP_SSH_KEY:-$INVENTORY_ROOT/credentials/shared/ssh/exe-dev-bootstrap}"
+REMOTE_SETUP_TIMEOUT_SECONDS="${REMOTE_SETUP_TIMEOUT_SECONDS:-600}"
 
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/lib/provision-common.sh"
@@ -28,6 +31,9 @@ usage() {
   cat <<'USAGE'
 Usage:
   scripts/provision-exe-dev-nix.sh <target-fqdn>
+
+Environment:
+  REMOTE_SETUP_TIMEOUT_SECONDS  Max seconds for the remote setup phase (default: 600)
 
 Minimal host-native provisioner for exe.dev VMs using generated Home Manager
 bootstrap derived from target inventory.
@@ -61,6 +67,7 @@ fi
 TARGET_FQDN="${1:?Usage: provision-exe-dev-nix.sh <target-fqdn>}"
 TARGET_CONFIG="$INVENTORY_ROOT/targets/$TARGET_FQDN/config.env"
 require_file "$TARGET_CONFIG"
+require_file "$TOOLNIX_BOOTSTRAP_SCRIPT"
 SHARED_ENV_FILE="$(shared_env_file "$INVENTORY_ROOT")"
 require_file "$SHARED_ENV_FILE"
 
@@ -75,6 +82,8 @@ fi
 MAIN_REPO_DIR="$(config_value MAIN_REPO_DIR "$TARGET_CONFIG")"
 MAIN_REPO_BRANCH="$(config_value MAIN_REPO_BRANCH "$TARGET_CONFIG")"
 REPO_URL="$(config_value REPO_URL "$TARGET_CONFIG")"
+TOOLNIX_REF="$(config_value TOOLNIX_REF "$TARGET_CONFIG")"
+TOOLNIX_REF="${TOOLNIX_REF:-github:lefant/toolnix}"
 INSTALL_EXE_DEV_BOOTSTRAP_SSH_KEY="$(config_value INSTALL_EXE_DEV_BOOTSTRAP_SSH_KEY "$TARGET_CONFIG")"
 INSTALL_EXE_DEV_BOOTSTRAP_SSH_KEY="${INSTALL_EXE_DEV_BOOTSTRAP_SSH_KEY:-0}"
 REMOTE_REPO_DIR="$(resolve_remote_path "$MAIN_REPO_DIR")"
@@ -126,6 +135,7 @@ trap cleanup EXIT
 REMOTE_TMP="$(ssh "${SSH_OPTS[@]}" "$TARGET_FQDN" 'mktemp -d')"
 
 upload_credentials "$TARGET_FQDN" "$INVENTORY_ROOT" "$REMOTE_TMP" "$SSH_OPTS_STR" "$INSTALL_EXE_DEV_BOOTSTRAP_SSH_KEY"
+scp "${SSH_OPTS[@]}" "$TOOLNIX_BOOTSTRAP_SCRIPT" "$TARGET_FQDN:$REMOTE_TMP/bootstrap-home-manager-host.sh"
 
 LOCAL_REMOTE_SCRIPT="$(mktemp "${TMPDIR:-/tmp}/provision-devenv-minimal.XXXXXX.sh")"
 cat > "$LOCAL_REMOTE_SCRIPT" <<'REMOTE_SCRIPT'
@@ -142,9 +152,27 @@ HM_ENABLE_AGENT_BROWSER="$8"
 HM_USERNAME="$9"
 HM_HOME_DIRECTORY="${10}"
 HM_STATE_VERSION="${11}"
+TOOLNIX_REF="${12}"
 
 log() { printf '\n==> %s\n' "$1"; }
 warn() { printf '\nWARNING: %s\n' "$1" >&2; }
+
+print_preflight_status() {
+  log "Remote preflight status"
+  df -h / /nix 2>/dev/null || df -h /
+  ps -eo pid,etime,cmd | egrep 'nix|home-manager|cargo|rustc|go build' | egrep -v egrep | tail -n 20 || true
+}
+
+require_root_disk_headroom_mb() {
+  local minimum_mb="$1"
+  local available_mb
+  available_mb="$(df -Pm / | awk 'NR==2 { print $4 }')"
+  if [ -z "$available_mb" ] || [ "$available_mb" -lt "$minimum_mb" ]; then
+    echo "ERROR: insufficient root disk headroom before provisioning (${available_mb:-unknown} MB available, need at least $minimum_mb MB)" >&2
+    df -h / /nix 2>/dev/null || df -h /
+    exit 1
+  fi
+}
 
 bool_to_nix() {
   case "$1" in
@@ -162,20 +190,17 @@ if ! command -v nix >/dev/null 2>&1; then
   . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 fi
 
-log "Configuring /etc/nix/nix.conf"
-sudo tee /etc/nix/nix.conf >/dev/null <<'NIXCONF'
-build-users-group = nixbld
-experimental-features = nix-command flakes
-accept-flake-config = true
-trusted-users = root exedev
-substituters = https://cache.nixos.org https://devenv.cachix.org https://cache.numtide.com
-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= cache.numtide.com-1:VaxqhRn+S+2+dPBM+Op/sZ5wlbXIfJMyFwEql5HTYLI= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
-NIXCONF
+nix_flake_cmd() {
+  nix --extra-experimental-features 'nix-command flakes' --accept-flake-config "$@"
+}
 
-sudo systemctl restart nix-daemon
+print_preflight_status
+require_root_disk_headroom_mb 8192
 
 log "Installing minimal profile packages"
-nix profile install nixpkgs#devenv nixpkgs#direnv nixpkgs#git nixpkgs#gh nixpkgs#zsh 2>/dev/null || true
+nix_flake_cmd profile install nixpkgs#direnv nixpkgs#git nixpkgs#gh nixpkgs#zsh 2>/dev/null || true
+export PATH="$HOME/.nix-profile/bin:$PATH"
+hash -r
 
 log "Installing credentials"
 cat "$REMOTE_TMP/env.toolnix" > "$HOME/.env.toolnix"
@@ -197,10 +222,6 @@ if [ -f "$REMOTE_TMP/exe-dev-bootstrap" ]; then
   install -m 600 "$REMOTE_TMP/exe-dev-bootstrap" "$HOME/.ssh/exe-dev-bootstrap"
   install -m 644 "$REMOTE_TMP/exe-dev-bootstrap.pub" "$HOME/.ssh/exe-dev-bootstrap.pub"
 fi
-
-log "Installing devenv direnvrc"
-mkdir -p "$HOME/.config/direnv"
-devenv direnvrc > "$HOME/.config/direnv/direnvrc"
 
 log "Configuring gh auth"
 set -a
@@ -243,69 +264,43 @@ clone_repo() {
 
 clone_repo "$REPO_URL" "$REMOTE_REPO_DIR" "$MAIN_REPO_BRANCH"
 
-TOOLNIX_DIR="$HOME/sources/toolnix"
-if [ "$REMOTE_REPO_DIR" != "$TOOLNIX_DIR" ]; then
-  clone_repo "https://github.com/lefant/toolnix.git" "$TOOLNIX_DIR" "main"
-fi
-clone_repo "https://github.com/lefant/agent-skills.git" "$HOME/sources/agent-skills" "main"
-clone_repo "https://github.com/lefant/claude-code-plugins.git" "$HOME/sources/claude-code-plugins" "main"
+log "Running tracked toolnix host bootstrap script"
+bash "$REMOTE_TMP/bootstrap-home-manager-host.sh" \
+  --toolnix-ref "$TOOLNIX_REF" \
+  --host-name "$HM_HOST_NAME" \
+  --home-username "$HM_USERNAME" \
+  --home-directory "$HM_HOME_DIRECTORY" \
+  --state-version "$HM_STATE_VERSION" \
+  --backup-extension pre-toolnix-bootstrap \
+  $( [ "$HM_ENABLE_HOST_CONTROL" = "1" ] && printf '%s ' -- '--enable-host-control' ) \
+  $( [ "$HM_ENABLE_AGENT_BASELINE" = "0" ] && printf '%s ' -- '--disable-agent-baseline' ) \
+  $( [ "$HM_ENABLE_AGENT_BROWSER" = "1" ] && printf '%s ' -- '--enable-agent-browser' )
 
-BOOTSTRAP_DIR="$REMOTE_TMP/toolnix-home-bootstrap"
-mkdir -p "$BOOTSTRAP_DIR"
+log "Installing devenv after cache-backed host bootstrap"
+nix_flake_cmd profile install nixpkgs#devenv 2>/dev/null || true
+hash -r
 
-log "Rendering Home Manager bootstrap flake"
-cat > "$BOOTSTRAP_DIR/flake.nix" <<EOF
-{
-  description = "Generated bootstrap for ${HM_HOST_NAME}";
-
-  inputs = {
-    toolnix.url = "path:${TOOLNIX_DIR}";
-    nixpkgs.follows = "toolnix/nixpkgs";
-    home-manager.follows = "toolnix/home-manager";
-  };
-
-  outputs = { nixpkgs, home-manager, toolnix, ... }:
-    let
-      system = "x86_64-linux";
-    in {
-      homeConfigurations.bootstrap = home-manager.lib.homeManagerConfiguration {
-        pkgs = import nixpkgs { inherit system; };
-        extraSpecialArgs = { inputs = toolnix.devenvSources; };
-        modules = [
-          toolnix.homeManagerModules.default
-          {
-            home.username = "${HM_USERNAME}";
-            home.homeDirectory = "${HM_HOME_DIRECTORY}";
-            home.stateVersion = "${HM_STATE_VERSION}";
-
-            toolnix.hostName = "${HM_HOST_NAME}";
-            toolnix.enableHostControl = $(bool_to_nix "$HM_ENABLE_HOST_CONTROL");
-            toolnix.enableAgentBaseline = $(bool_to_nix "$HM_ENABLE_AGENT_BASELINE");
-            toolnix.agentBrowser.enable = $(bool_to_nix "$HM_ENABLE_AGENT_BROWSER");
-          }
-        ];
-      };
-    };
-}
-EOF
-
-log "Building Home Manager activation"
-nix build "$BOOTSTRAP_DIR#homeConfigurations.bootstrap.activationPackage"
-
-log "Switching Home Manager profile"
-nix run github:nix-community/home-manager -- switch -b pre-toolnix-bootstrap --flake "$BOOTSTRAP_DIR#bootstrap"
+log "Installing devenv direnvrc"
+mkdir -p "$HOME/.config/direnv"
+devenv direnvrc > "$HOME/.config/direnv/direnvrc"
 
 log "Minimal toolnix host-native provisioning complete"
 REMOTE_SCRIPT
 
 log "Running remote host-native setup"
 scp "${SSH_OPTS[@]}" "$LOCAL_REMOTE_SCRIPT" "$TARGET_FQDN:$REMOTE_TMP/remote-host-native-setup.sh"
-ssh "${SSH_OPTS[@]}" "$TARGET_FQDN" \
-  "bash '$REMOTE_TMP/remote-host-native-setup.sh' \
-    '$REMOTE_TMP' '$REMOTE_REPO_DIR' '$MAIN_REPO_BRANCH' '$REPO_URL' \
-    '$HOME_MANAGER_HOST_NAME' '$HOME_MANAGER_ENABLE_HOST_CONTROL' \
-    '$HOME_MANAGER_ENABLE_AGENT_BASELINE' '$HOME_MANAGER_ENABLE_AGENT_BROWSER' \
-    '$HOME_USERNAME_VALUE' '$HOME_DIRECTORY_VALUE' '$HOME_STATE_VERSION_VALUE'"
+if ! timeout --foreground "$REMOTE_SETUP_TIMEOUT_SECONDS" \
+  ssh "${SSH_OPTS[@]}" "$TARGET_FQDN" \
+    "bash '$REMOTE_TMP/remote-host-native-setup.sh' \
+      '$REMOTE_TMP' '$REMOTE_REPO_DIR' '$MAIN_REPO_BRANCH' '$REPO_URL' \
+      '$HOME_MANAGER_HOST_NAME' '$HOME_MANAGER_ENABLE_HOST_CONTROL' \
+      '$HOME_MANAGER_ENABLE_AGENT_BASELINE' '$HOME_MANAGER_ENABLE_AGENT_BROWSER' \
+      '$HOME_USERNAME_VALUE' '$HOME_DIRECTORY_VALUE' '$HOME_STATE_VERSION_VALUE' \
+      '$TOOLNIX_REF'"; then
+  printf '\nWARNING: Remote setup failed or timed out after %ss; collecting remote status\n' "$REMOTE_SETUP_TIMEOUT_SECONDS" >&2
+  ssh "${SSH_OPTS[@]}" "$TARGET_FQDN" "df -h / /nix 2>/dev/null || df -h /; echo ---; ps -eo pid,etime,cmd | egrep 'nix|home-manager|cargo|rustc|go build' | egrep -v egrep | tail -n 40 || true; echo ---; if [ -f /etc/nix/nix.custom.conf ]; then sudo cat /etc/nix/nix.custom.conf; fi" || true
+  exit 1
+fi
 
 run_smoke_tests "$TARGET_FQDN" "$TARGET_MODE" "$REMOTE_REPO_DIR" "$SSH_OPTS_STR"
 print_manual_checks "$TARGET_FQDN" "$TARGET_MODE"
