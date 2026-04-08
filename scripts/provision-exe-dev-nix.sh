@@ -5,13 +5,15 @@
 # - ensure the VM exists
 # - install Nix + minimal profile tooling
 # - place credentials
-# - clone the declared repo and the shared toolnix repo
-# - generate a host-specific Home Manager bootstrap config from target data
+# - clone the declared project repo into MAIN_REPO_DIR
+# - bootstrap toolnix host state through the tracked remote-flake bootstrap script
+# - install devenv after the cache-backed host baseline is active
 # - activate persistent host state declaratively through Home Manager
 #
 # Intentionally out of scope:
 # - Docker mode
 # - host dotfiles management strategy
+# - target-side clones of shared bootstrap repos such as toolnix, agent-skills, or claude-code-plugins
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

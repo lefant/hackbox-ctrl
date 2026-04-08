@@ -87,10 +87,19 @@ The active project-target host-native path is:
 
 1. read target metadata from `hackbox-ctrl-inventory`
 2. place credentials and bootstrap inputs on the target
-3. clone the declared project repo and shared repos
-4. generate a tiny per-host Home Manager bootstrap flake
-5. activate persistent host state via `toolnix.homeManagerModules.default`
-6. run smoke tests and then interactive acceptance checks
+3. clone only the declared project repo into `MAIN_REPO_DIR`
+4. invoke the tracked `toolnix` bootstrap script on the target
+5. consume `toolnix` through its remote flake interface for Home Manager-managed host state
+6. install `devenv` after that cache-backed host baseline is active
+7. run smoke tests and then interactive acceptance checks
+
+Important distinction:
+
+- the project-target path still clones the declared project repository
+- if that declared project repository happens to be `lefant/toolnix`, then the target will of course get a normal working checkout at `MAIN_REPO_DIR`
+- that is not the old shared bootstrap dependency model
+- the path no longer requires target-side shared clones of `toolnix`, `agent-skills`, or `claude-code-plugins` under `~/sources/...`
+- no target-side clone of `hackbox-ctrl` is required for provisioning or readiness
 
 ### Host-only toolnix path
 
