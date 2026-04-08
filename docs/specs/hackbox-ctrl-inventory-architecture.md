@@ -64,7 +64,7 @@ The system SHOULD keep `hackbox-ctrl-inventory` minimal and focused on manifests
 **Scenarios:**
 - GIVEN the older `bootstrap-configs/` compatibility layout WHEN bootstrap logic still needs it THEN it is generated from `targets/` plus `credentials/` rather than committed as a second source of truth
 - GIVEN future growth in environment definitions WHEN `hackbox-ctrl-inventory` evolves THEN its structure stays centered on describing environments rather than re-implementing shared `toolnix` internals
-- GIVEN shared architecture, bootstrap, or repository-structure documentation WHEN it is written THEN it lives in `hackbox-ctrl/docs/` or `sources/toolnix/docs/`, not as a general documentation tree inside the private inventory repo
+- GIVEN shared architecture, bootstrap, or repository-structure documentation WHEN it is written THEN it lives in `hackbox-ctrl/docs/` or the `toolnix` docs tree from a normal checkout such as `~/git/lefant/toolnix/docs/`, not as a general documentation tree inside the private inventory repo
 
 ### Thin Project Integration
 

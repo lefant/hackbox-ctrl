@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INVENTORY_ROOT="${HACKBOX_CTRL_INVENTORY_ROOT:-$REPO_ROOT/hackbox-ctrl-inventory}"
-TOOLNIX_REPO_ROOT="${TOOLNIX_REPO_ROOT:-$INVENTORY_ROOT/sources/toolnix}"
+TOOLNIX_REPO_ROOT="${TOOLNIX_REPO_ROOT:-$HOME/git/lefant/toolnix}"
 SHARED_REPO_ROOT="$TOOLNIX_REPO_ROOT"
 CLAUDE_TEMPLATE_ROOT="$SHARED_REPO_ROOT/agents/claude/templates"
 CLAUDE_DIR="$HOME/.claude"

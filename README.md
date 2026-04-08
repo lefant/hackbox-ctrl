@@ -98,7 +98,8 @@ Important distinction:
 - the project-target path still clones the declared project repository
 - if that declared project repository happens to be `lefant/toolnix`, then the target will of course get a normal working checkout at `MAIN_REPO_DIR`
 - that is not the old shared bootstrap dependency model
-- the path no longer requires target-side shared clones of `toolnix`, `agent-skills`, or `claude-code-plugins` under `~/sources/...`
+- the path no longer requires target-side shared clones of `toolnix`, `agent-skills`, or `claude-code-plugins`
+- normal editable repo checkouts should use the `~/git/lefant/...` convention rather than reviving the older `~/sources/...` mirror pattern
 - no target-side clone of `hackbox-ctrl` is required for provisioning or readiness
 
 ### Host-only toolnix path

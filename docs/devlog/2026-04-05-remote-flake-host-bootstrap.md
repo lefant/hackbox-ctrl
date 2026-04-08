@@ -19,7 +19,7 @@ Fresh exe.dev proof target:
 
 Validated:
 
-- no target-side shared repo clones under `~/sources/toolnix`, `~/sources/agent-skills`, or `~/sources/claude-code-plugins`
+- no target-side shared repo clones of `toolnix`, `agent-skills`, or `claude-code-plugins`; the old `~/sources/...` mirror pattern is no longer required for this path
 - `claude` and `pi` present on `PATH`
 - managed files present under `~/.claude/` and `~/.pi/agent/`
 - `scripts/verify-toolnix-host-bootstrap.sh toolnix-host-proof.exe.xyz` returned `ready`
