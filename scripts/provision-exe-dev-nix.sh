@@ -23,6 +23,8 @@ TOOLNIX_REPO_ROOT="${TOOLNIX_REPO_ROOT:-/home/exedev/git/lefant/toolnix}"
 TOOLNIX_BOOTSTRAP_SCRIPT="$TOOLNIX_REPO_ROOT/scripts/bootstrap-home-manager-host.sh"
 export BOOTSTRAP_SSH_KEY="${BOOTSTRAP_SSH_KEY:-$INVENTORY_ROOT/credentials/shared/ssh/exe-dev-bootstrap}"
 REMOTE_SETUP_TIMEOUT_SECONDS="${REMOTE_SETUP_TIMEOUT_SECONDS:-600}"
+ROOT_DISK_HEADROOM_MB="${ROOT_DISK_HEADROOM_MB:-8192}"
+ENABLE_DISK_CLEANUP_RETRY="${ENABLE_DISK_CLEANUP_RETRY:-1}"
 
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/lib/provision-common.sh"
@@ -36,6 +38,8 @@ Usage:
 
 Environment:
   REMOTE_SETUP_TIMEOUT_SECONDS  Max seconds for the remote setup phase (default: 600)
+  ROOT_DISK_HEADROOM_MB        Required free space on / before bootstrap (default: 8192)
+  ENABLE_DISK_CLEANUP_RETRY    Try one safe cleanup pass on low disk before failing (default: 1)
 
 Minimal host-native provisioner for exe.dev VMs using generated Home Manager
 bootstrap derived from target inventory.
@@ -155,6 +159,8 @@ HM_USERNAME="$9"
 HM_HOME_DIRECTORY="${10}"
 HM_STATE_VERSION="${11}"
 TOOLNIX_REF="${12}"
+ROOT_DISK_HEADROOM_MB="${13}"
+ENABLE_DISK_CLEANUP_RETRY="${14}"
 
 log() { printf '\n==> %s\n' "$1"; }
 warn() { printf '\nWARNING: %s\n' "$1" >&2; }
@@ -165,15 +171,46 @@ print_preflight_status() {
   ps -eo pid,etime,cmd | egrep 'nix|home-manager|cargo|rustc|go build' | egrep -v egrep | tail -n 20 || true
 }
 
-require_root_disk_headroom_mb() {
+current_root_disk_headroom_mb() {
+  df -Pm / | awk 'NR==2 { print $4 }'
+}
+
+safe_disk_cleanup() {
+  log "Attempting safe disk cleanup"
+
+  nix-collect-garbage -d >/dev/null 2>&1 || true
+  nix store gc >/dev/null 2>&1 || true
+  rm -rf "$HOME/.cache/nix"/{binary-cache-v6,tarballs-v2,fetcher-cache-v3} 2>/dev/null || true
+  find /tmp -mindepth 1 -maxdepth 1 -user "$(id -un)" -mtime +1 -exec rm -rf {} + 2>/dev/null || true
+
+  if command -v journalctl >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
+    sudo journalctl --rotate >/dev/null 2>&1 || true
+    sudo journalctl --vacuum-time=7d >/dev/null 2>&1 || true
+  fi
+
+  print_preflight_status
+}
+
+ensure_root_disk_headroom_mb() {
   local minimum_mb="$1"
   local available_mb
-  available_mb="$(df -Pm / | awk 'NR==2 { print $4 }')"
-  if [ -z "$available_mb" ] || [ "$available_mb" -lt "$minimum_mb" ]; then
-    echo "ERROR: insufficient root disk headroom before provisioning (${available_mb:-unknown} MB available, need at least $minimum_mb MB)" >&2
-    df -h / /nix 2>/dev/null || df -h /
-    exit 1
+  available_mb="$(current_root_disk_headroom_mb)"
+  if [ -n "$available_mb" ] && [ "$available_mb" -ge "$minimum_mb" ]; then
+    return 0
   fi
+
+  if [ "$ENABLE_DISK_CLEANUP_RETRY" = "1" ]; then
+    warn "Low root disk headroom (${available_mb:-unknown} MB available, need $minimum_mb MB); retrying after safe cleanup"
+    safe_disk_cleanup
+    available_mb="$(current_root_disk_headroom_mb)"
+    if [ -n "$available_mb" ] && [ "$available_mb" -ge "$minimum_mb" ]; then
+      return 0
+    fi
+  fi
+
+  echo "ERROR: insufficient root disk headroom before provisioning (${available_mb:-unknown} MB available, need at least $minimum_mb MB)" >&2
+  df -h / /nix 2>/dev/null || df -h /
+  exit 1
 }
 
 bool_to_nix() {
@@ -197,7 +234,7 @@ nix_flake_cmd() {
 }
 
 print_preflight_status
-require_root_disk_headroom_mb 8192
+ensure_root_disk_headroom_mb "$ROOT_DISK_HEADROOM_MB"
 
 log "Installing minimal profile packages"
 nix_flake_cmd profile install nixpkgs#direnv nixpkgs#git nixpkgs#gh nixpkgs#zsh 2>/dev/null || true
@@ -267,16 +304,24 @@ clone_repo() {
 clone_repo "$REPO_URL" "$REMOTE_REPO_DIR" "$MAIN_REPO_BRANCH"
 
 log "Running tracked toolnix host bootstrap script"
-bash "$REMOTE_TMP/bootstrap-home-manager-host.sh" \
-  --toolnix-ref "$TOOLNIX_REF" \
-  --host-name "$HM_HOST_NAME" \
-  --home-username "$HM_USERNAME" \
-  --home-directory "$HM_HOME_DIRECTORY" \
-  --state-version "$HM_STATE_VERSION" \
-  --backup-extension pre-toolnix-bootstrap \
-  $( [ "$HM_ENABLE_HOST_CONTROL" = "1" ] && printf '%s ' -- '--enable-host-control' ) \
-  $( [ "$HM_ENABLE_AGENT_BASELINE" = "0" ] && printf '%s ' -- '--disable-agent-baseline' ) \
-  $( [ "$HM_ENABLE_AGENT_BROWSER" = "1" ] && printf '%s ' -- '--enable-agent-browser' )
+bootstrap_args=(
+  --toolnix-ref "$TOOLNIX_REF"
+  --host-name "$HM_HOST_NAME"
+  --home-username "$HM_USERNAME"
+  --home-directory "$HM_HOME_DIRECTORY"
+  --state-version "$HM_STATE_VERSION"
+  --backup-extension pre-toolnix-bootstrap
+)
+if [ "$HM_ENABLE_HOST_CONTROL" = "1" ]; then
+  bootstrap_args+=(--enable-host-control)
+fi
+if [ "$HM_ENABLE_AGENT_BASELINE" = "0" ]; then
+  bootstrap_args+=(--disable-agent-baseline)
+fi
+if [ "$HM_ENABLE_AGENT_BROWSER" = "1" ]; then
+  bootstrap_args+=(--enable-agent-browser)
+fi
+bash "$REMOTE_TMP/bootstrap-home-manager-host.sh" "${bootstrap_args[@]}"
 
 log "Installing devenv after cache-backed host bootstrap"
 nix_flake_cmd profile install nixpkgs#devenv 2>/dev/null || true
@@ -298,7 +343,7 @@ if ! timeout --foreground "$REMOTE_SETUP_TIMEOUT_SECONDS" \
       '$HOME_MANAGER_HOST_NAME' '$HOME_MANAGER_ENABLE_HOST_CONTROL' \
       '$HOME_MANAGER_ENABLE_AGENT_BASELINE' '$HOME_MANAGER_ENABLE_AGENT_BROWSER' \
       '$HOME_USERNAME_VALUE' '$HOME_DIRECTORY_VALUE' '$HOME_STATE_VERSION_VALUE' \
-      '$TOOLNIX_REF'"; then
+      '$TOOLNIX_REF' '$ROOT_DISK_HEADROOM_MB' '$ENABLE_DISK_CLEANUP_RETRY'"; then
   printf '\nWARNING: Remote setup failed or timed out after %ss; collecting remote status\n' "$REMOTE_SETUP_TIMEOUT_SECONDS" >&2
   ssh "${SSH_OPTS[@]}" "$TARGET_FQDN" "df -h / /nix 2>/dev/null || df -h /; echo ---; ps -eo pid,etime,cmd | egrep 'nix|home-manager|cargo|rustc|go build' | egrep -v egrep | tail -n 40 || true; echo ---; if [ -f /etc/nix/nix.custom.conf ]; then sudo cat /etc/nix/nix.custom.conf; fi" || true
   exit 1
