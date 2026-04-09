@@ -1,23 +1,59 @@
 # hackbox-ctrl
 
-Standalone control-plane toolkit for toolnix-managed hackboxes.
+Standalone control-plane toolkit for `toolnix`-managed hackboxes.
 
-This repo owns the shared control-plane layer around provisioning, readiness,
-and inventory-driven host operations.
+This repo is the shared operator-facing layer around provisioning, readiness,
+and inventory-driven host operations. It is also the best high-level entrypoint
+for understanding how the three active repos fit together.
+
+## Repo relationship
+
+```mermaid
+flowchart LR
+    CTRL["hackbox-ctrl\nshared control-plane scripts + docs"]
+    INV["hackbox-ctrl-inventory\nprivate targets + credentials + logs"]
+    TNX["toolnix\nshared Nix modules + bootstrap + host state"]
+    PROJ["project repos\nconsumer source checkouts"]
+    HOSTS["target hosts\nexe.dev VMs / control hosts"]
+
+    CTRL --> INV
+    CTRL --> TNX
+    INV --> PROJ
+    INV --> HOSTS
+    CTRL --> HOSTS
+    TNX --> HOSTS
+    TNX --> PROJ
+```
+
+### Ownership boundaries
+
+- `hackbox-ctrl`
+  - shared control-plane scripts
+  - shared architecture/spec/reference docs
+  - readiness and provisioning workflow
+- `hackbox-ctrl-inventory`
+  - private target manifests
+  - local credentials and machine-specific runtime inputs
+  - operational logs and per-target notes
+- `toolnix`
+  - shared Nix/devenv/Home Manager implementation
+  - tracked bootstrap entrypoints
+  - shared agent/shell/tmux baseline
 
 It does **not** own:
 
-- generic shared Nix environment logic — that lives in [`toolnix`](https://github.com/lefant/toolnix)
+- generic shared Nix environment logic — that lives in
+  [`toolnix`](https://github.com/lefant/toolnix)
 - private target facts, credentials, and logs — those live in the separate
   local `hackbox-ctrl-inventory` checkout
 
-## Repo layout
+## Current local layout
 
 ```text
 ~/git/lefant/hackbox-ctrl/
 ├── scripts/
 ├── docs/
-└── hackbox-ctrl-inventory/
+└── hackbox-ctrl-inventory/ -> ~/git/lefant/hackbox-ctrl-inventory
 ```
 
 The scripts in this repo assume that nested layout by default. Override it with
@@ -47,6 +83,57 @@ Expected examples there include:
 
 This repo intentionally does not track those private inputs.
 
+## Recent changes across the stack
+
+### hackbox-ctrl
+
+Recent shared control-plane changes documented here include:
+
+- standalone-repo convergence and clearer repo-boundary docs
+- host-only `toolnix` provisioning via `scripts/provision-toolnix-host.sh`
+- remote-flake bootstrap proof for fresh hosts without target-side shared repo
+  clones
+- cache-backed `devenv` bootstrap proof after the Home Manager baseline is
+  active
+- checkout-path guidance standardized around `~/git/lefant/...`
+
+See especially:
+
+- `docs/devlog/2026-03-30-hackbox-ctrl-convergence.md`
+- `docs/devlog/2026-03-31-standalone-rollout-follow-up.md`
+- `docs/devlog/2026-04-05-remote-flake-host-bootstrap.md`
+
+### hackbox-ctrl-inventory
+
+Recent private-inventory changes visible from its tracked docs/logs include:
+
+- docs cleaned up to stop treating old `hackbox-ctrl-utils` paths as primary
+- completeness audit of the standalone control-plane split
+- rollout and cleanup notes for migrated `toolnix` hosts
+- target-specific migration records under `logs/`
+
+Useful entrypoints there:
+
+- `hackbox-ctrl-inventory/README.md`
+- `hackbox-ctrl-inventory/logs/2026-03-31-hackbox-ctrl-completeness-audit.md`
+- `hackbox-ctrl-inventory/logs/2026-03-31-toolnix-rollout-and-host-cleanup.md`
+
+### toolnix
+
+Recent shared Nix-layer changes documented in `toolnix` include:
+
+- remote flake bootstrap as the preferred fresh-host entrypoint
+- published bootstrap artifact and public flake interfaces
+- cache/bootstrap guidance for `llm-agents.nix`
+- restored opinionated zsh completion defaults and verification
+
+Start with:
+
+- `../toolnix/README.md`
+- `../toolnix/docs/reference/architecture.md`
+- `../toolnix/docs/devlog/2026-04-05-remote-host-bootstrap-script.md`
+- `../toolnix/docs/devlog/2026-04-07-zsh-completion-defaults.md`
+
 ## Common commands
 
 Provision or reprovision a project target VM from the standalone repo:
@@ -55,7 +142,7 @@ Provision or reprovision a project target VM from the standalone repo:
 scripts/provision-exe-dev-nix.sh <target-fqdn>
 ```
 
-Provision a host-only toolnix target with no target-side `toolnix` git clone:
+Provision a host-only `toolnix` target with no target-side `toolnix` git clone:
 
 ```bash
 scripts/provision-toolnix-host.sh <target-fqdn>
