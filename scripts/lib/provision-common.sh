@@ -76,21 +76,15 @@ ensure_exe_dev_vm() {
 
 shared_env_file() {
   local inventory_root="$1"
-  if [ -f "$inventory_root/credentials/shared/env.toolnix" ]; then
-    printf '%s\n' "$inventory_root/credentials/shared/env.toolnix"
-    return 0
-  fi
-  printf '%s\n' "$inventory_root/credentials/shared/env.toolbox"
+  local path="$inventory_root/credentials/shared/env.toolnix"
+  require_file "$path"
+  printf '%s\n' "$path"
 }
 
 target_env_fragment_file() {
   local inventory_root="$1"
   local fqdn="$2"
-  if [ -f "$inventory_root/credentials/targets/$fqdn/env.toolnix.fragment" ]; then
-    printf '%s\n' "$inventory_root/credentials/targets/$fqdn/env.toolnix.fragment"
-    return 0
-  fi
-  printf '%s\n' "$inventory_root/credentials/targets/$fqdn/env.toolbox.fragment"
+  printf '%s\n' "$inventory_root/credentials/targets/$fqdn/env.toolnix.fragment"
 }
 
 upload_credentials() {

@@ -133,7 +133,7 @@ Default policy:
 - Hosts should be considered agent-capable by default.
 - `direnv` support may remain available, but automatic `direnv` activation should not be part of the default shell baseline.
 - `~/.zsh/zshlocal.sh` should be empty/minimal by default and not carry routine baseline behavior.
-- `~/.env.toolnix` should be treated as the primary credentials-only escape hatch, with `~/.env.toolbox` supported only as a compatibility fallback during migration.
+- `~/.env.toolnix` should be treated as the primary credentials-only escape hatch; current `hackbox-ctrl` inventory and provisioning now standardize on `env.toolnix` naming, while `~/.env.toolbox` remains only a legacy runtime fallback inside `toolnix` itself.
 
 ## Consequences
 
