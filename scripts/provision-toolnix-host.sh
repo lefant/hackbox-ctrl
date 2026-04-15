@@ -114,15 +114,24 @@ if [ -f "\$REMOTE_TMP/exe-dev-bootstrap" ]; then
   install -m 644 "\$REMOTE_TMP/exe-dev-bootstrap.pub" "${HOME_DIRECTORY_VALUE}/.ssh/exe-dev-bootstrap.pub"
 fi
 
+if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+  # shellcheck disable=SC1091
+  . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+fi
+nix --extra-experimental-features 'nix-command flakes' --accept-flake-config \
+  profile install nixpkgs#direnv nixpkgs#git nixpkgs#gh nixpkgs#zsh 2>/dev/null || true
+export PATH="${HOME_DIRECTORY_VALUE}/.nix-profile/bin:\$PATH"
+hash -r
+
 bash "\$REMOTE_TMP/bootstrap-home-manager-host.sh" \
   --toolnix-ref "${TOOLNIX_REF}" \
   --host-name "${HOME_MANAGER_HOST_NAME}" \
   --home-username "${HOME_USERNAME_VALUE}" \
   --home-directory "${HOME_DIRECTORY_VALUE}" \
   --state-version "${HOME_STATE_VERSION_VALUE}" \
-  $( [ "$HOME_MANAGER_ENABLE_HOST_CONTROL" = "1" ] && printf '%s ' -- '--enable-host-control' ) \
-  $( [ "$HOME_MANAGER_ENABLE_AGENT_BASELINE" = "0" ] && printf '%s ' -- '--disable-agent-baseline' ) \
-  $( [ "$HOME_MANAGER_ENABLE_AGENT_BROWSER" = "1" ] && printf '%s ' -- '--enable-agent-browser' )
+  $( [ "$HOME_MANAGER_ENABLE_HOST_CONTROL" = "1" ] && printf '%s ' '--enable-host-control' ) \
+  $( [ "$HOME_MANAGER_ENABLE_AGENT_BASELINE" = "0" ] && printf '%s ' '--disable-agent-baseline' ) \
+  $( [ "$HOME_MANAGER_ENABLE_AGENT_BROWSER" = "1" ] && printf '%s ' '--enable-agent-browser' )
 EOF
 
 log "Running host-bootstrap readiness checks"
