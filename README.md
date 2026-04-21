@@ -154,6 +154,12 @@ SSH to a configured target using inventory target metadata:
 scripts/target-ssh.sh <target-name-or-fqdn>
 ```
 
+Install and configure Tailscale on a target using inventory-managed inputs:
+
+```bash
+scripts/setup-target-tailscale.sh <target-fqdn>
+```
+
 Print the interactive readiness procedure for a general machine:
 
 ```bash
