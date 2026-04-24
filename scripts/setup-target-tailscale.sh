@@ -30,6 +30,7 @@ Expected env.tailscale fields:
 Optional config/env fields:
   TAILSCALE_HOSTNAME            default: <target short name>
   TAILSCALE_ENABLE_SSH          default: 1
+  TAILSCALE_SERVE_ENABLE        default: 1
   TAILSCALE_SERVE_HTTPS_PORT    default: 443
   TAILSCALE_SERVE_TARGET        default: http://127.0.0.1:8000
   TAILSCALE_ADVERTISE_TAGS      optional comma-separated list
@@ -68,6 +69,8 @@ TAILSCALE_HOSTNAME_VALUE="$(config_value TAILSCALE_HOSTNAME "$TARGET_CONFIG")"
 TAILSCALE_HOSTNAME_VALUE="${TAILSCALE_HOSTNAME_VALUE:-${TAILSCALE_HOSTNAME:-$TARGET_SHORT}}"
 TAILSCALE_ENABLE_SSH_VALUE="$(config_value TAILSCALE_ENABLE_SSH "$TARGET_CONFIG")"
 TAILSCALE_ENABLE_SSH_VALUE="${TAILSCALE_ENABLE_SSH_VALUE:-${TAILSCALE_ENABLE_SSH:-1}}"
+TAILSCALE_SERVE_ENABLE_VALUE="$(config_value TAILSCALE_SERVE_ENABLE "$TARGET_CONFIG")"
+TAILSCALE_SERVE_ENABLE_VALUE="${TAILSCALE_SERVE_ENABLE_VALUE:-${TAILSCALE_SERVE_ENABLE:-1}}"
 TAILSCALE_SERVE_HTTPS_PORT_VALUE="$(config_value TAILSCALE_SERVE_HTTPS_PORT "$TARGET_CONFIG")"
 TAILSCALE_SERVE_HTTPS_PORT_VALUE="${TAILSCALE_SERVE_HTTPS_PORT_VALUE:-${TAILSCALE_SERVE_HTTPS_PORT:-443}}"
 TAILSCALE_SERVE_TARGET_VALUE="$(config_value TAILSCALE_SERVE_TARGET "$TARGET_CONFIG")"
@@ -82,6 +85,7 @@ ssh "${SSH_OPTS[@]}" "$TARGET_FQDN" env \
   TAILSCALE_AUTH_KEY="$TAILSCALE_AUTH_KEY" \
   TAILSCALE_HOSTNAME_VALUE="$TAILSCALE_HOSTNAME_VALUE" \
   TAILSCALE_ENABLE_SSH_VALUE="$TAILSCALE_ENABLE_SSH_VALUE" \
+  TAILSCALE_SERVE_ENABLE_VALUE="$TAILSCALE_SERVE_ENABLE_VALUE" \
   TAILSCALE_SERVE_HTTPS_PORT_VALUE="$TAILSCALE_SERVE_HTTPS_PORT_VALUE" \
   TAILSCALE_SERVE_TARGET_VALUE="$TAILSCALE_SERVE_TARGET_VALUE" \
   TAILSCALE_ADVERTISE_TAGS_VALUE="$TAILSCALE_ADVERTISE_TAGS_VALUE" \
@@ -103,7 +107,9 @@ if [ -n "$TAILSCALE_ADVERTISE_TAGS_VALUE" ]; then
 fi
 "${up_cmd[@]}"
 
-sudo tailscale serve --bg --https="$TAILSCALE_SERVE_HTTPS_PORT_VALUE" "$TAILSCALE_SERVE_TARGET_VALUE"
+if [ "$TAILSCALE_SERVE_ENABLE_VALUE" = "1" ]; then
+  sudo tailscale serve --bg --https="$TAILSCALE_SERVE_HTTPS_PORT_VALUE" "$TAILSCALE_SERVE_TARGET_VALUE"
+fi
 
 echo
 printf 'tailscale_version='; tailscale version | head -n 1 || true
@@ -118,8 +124,13 @@ tailscale status --json | jq -r '
   "Self.TailscaleIPs=" + ((.Self.TailscaleIPs // []) | join(",")),
   "Self.Tags=" + ((.Self.Tags // []) | join(","))
 '
-printf '\nserve_status=\n'
-tailscale serve status | sed -n '1,80p'
+printf '\nserve_enabled=%s\n' "$TAILSCALE_SERVE_ENABLE_VALUE"
+if [ "$TAILSCALE_SERVE_ENABLE_VALUE" = "1" ]; then
+  printf '\nserve_status=\n'
+  tailscale serve status | sed -n '1,80p'
+else
+  printf '\nserve_status=skipped (native tailnet routing mode)\n'
+fi
 REMOTE
 
 log "Tailscale setup complete: $TARGET_FQDN"

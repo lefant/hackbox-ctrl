@@ -45,6 +45,7 @@ TAILSCALE_AUTH_KEY=tskey-auth-...
 ```bash
 TAILSCALE_HOSTNAME=lefant-openclaw-bottle
 TAILSCALE_ENABLE_SSH=1
+TAILSCALE_SERVE_ENABLE=1
 TAILSCALE_SERVE_HTTPS_PORT=443
 TAILSCALE_SERVE_TARGET=http://127.0.0.1:8000
 TAILSCALE_ADVERTISE_TAGS=
@@ -53,6 +54,7 @@ TAILSCALE_ADVERTISE_TAGS=
 Notes:
 
 - `TAILSCALE_HOSTNAME` defaults to the target short name.
+- `TAILSCALE_SERVE_ENABLE` defaults to `1`.
 - `TAILSCALE_SERVE_TARGET` defaults to `http://127.0.0.1:8000`, which matches the current exe.dev OpenClaw deployment pattern.
 - leave `TAILSCALE_ADVERTISE_TAGS` empty unless the tailnet ACL/tag-owner rules are already configured to allow the desired tags.
 
@@ -72,8 +74,39 @@ The script will:
 3. enable and start `tailscaled`
 4. join the target to the tailnet using `TAILSCALE_AUTH_KEY`
 5. optionally enable Tailscale SSH
-6. configure `tailscale serve` for the configured local target URL
-7. print status and serve verification output
+6. optionally configure `tailscale serve` for the configured local target URL
+7. print status and verification output
+
+## Service exposure modes
+
+### HTTPS reverse-proxy mode
+
+Use this for browser apps such as OpenClaw.
+
+Keep:
+
+- `TAILSCALE_SERVE_ENABLE=1`
+- `TAILSCALE_SERVE_TARGET=http://127.0.0.1:8000`
+
+Then Tailscale exposes a tailnet-only HTTPS URL via `tailscale serve`.
+
+### Native TCP/UDP service mode
+
+Use this for services that already speak their own protocol directly on a host port, such as Luanti game servers.
+
+Keep:
+
+- `TAILSCALE_SERVE_ENABLE=0`
+
+In this mode, Tailscale is only used to join the host to the tailnet.
+There is no HTTPS proxy layer.
+Peers connect directly to the target's Tailscale IP or MagicDNS hostname on the service port.
+
+Important:
+
+- the target service must listen on a non-loopback interface, not only `127.0.0.1`
+- Tailscale itself carries both TCP and UDP traffic inside the tailnet
+- `tailscale serve` is not needed for the direct Luanti game port path
 
 ## OpenClaw mapping
 
