@@ -83,6 +83,18 @@ Expected examples there include:
 
 This repo intentionally does not track those private inputs.
 
+## Operator rule
+
+After any meaningful fleet or host operation that changes machine state,
+inventory metadata, or operator knowledge:
+
+1. add or update a dated inventory log in `hackbox-ctrl-inventory/logs/`
+2. commit the relevant `hackbox-ctrl-inventory` changes
+3. push `hackbox-ctrl-inventory` so the operational record is current
+
+Do not leave important rollout, cleanup, provisioning, migration, or recovery
+work only in local shell history or chat context.
+
 ## Recent changes across the stack
 
 ### hackbox-ctrl
